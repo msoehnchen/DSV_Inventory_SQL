@@ -1,0 +1,921 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<snippets>
+   <group category="1st CargoWrite Inventory Functions" language="PLSQL">
+      <snippet name="ZZZ. SNIPPETS ARE SAVED in APPDATA\Roaming\SQL Developer\UserSnippets.xml" description="">
+         <code>
+            <![CDATA[C:\Users\marcel.sohnchen\AppData\Roaming\SQL Developer\UserSnippets.xml]]>
+         </code>
+      </snippet>
+      <snippet name="Locations - amount of bulk and pick locations per client" description="">
+         <code>
+            <![CDATA[--    LOCATIONS - quantity of Bulk and Pick locations per Client         --
+--            19/11/2019 by marcel.sohnchen@nl.dsv.com                   --
+-- --------------------------------------------------------------------- --
+select
+    locs."CLIENT",
+    locs."LOCATION TYPE",
+    sum(locs."TOTAL LOCATIONS") "TOTAL LOCATIONS (not Locked)"
+from
+(
+    select
+        locs."CLIENT",
+        case
+            when locs."LOCATION ZONE" in ('30SHELF', '30PICK') then 'PICK'
+            when locs."LOCATION ZONE" in ('30BLOK', '30STORAGE', '30BULK') then 'BULK'
+            else 'different'        
+        end "LOCATION TYPE",
+        locs."TOTAL LOCATIONS"
+    from
+    (
+        select
+            loc.SUBZONE_2 "CLIENT",
+            loc.WORK_ZONE "LOCATION ZONE",
+            count(loc.LOCATION_ID) "TOTAL LOCATIONS"
+        from V_LOCATION loc
+        where loc.SUBZONE_2 in ('NLVESTAS', 'NLGLORY')
+            and loc.LOCK_STATUS != 'Locked'
+
+        group by
+            loc.SUBZONE_2, loc.WORK_ZONE
+    ) locs
+) locs
+group by locs."CLIENT",locs."LOCATION TYPE"
+order by locs."CLIENT"
+]]>
+         </code>
+      </snippet>
+      <snippet name="INVENTORY SUMMARY PER LOC, incl empty locs and multiple SKUS" description="">
+         <code>
+            <![CDATA[--    INVENTORY SUMMARY PER LOC, incl empty locs and multiple SKUS       --
+--            13/11/2019 by marcel.sohnchen@nl.dsv.com                   --
+-- --------------------------------------------------------------------- -- 
+SELECT
+    l.location_id "LOCATION",
+    MAX(l.lock_status) "LOCK STATUS",
+               
+-- count the total of different SKUS and return a readable value instead of a number
+    CASE
+            WHEN COUNT(DISTINCT i.sku_id) = 1 THEN 'single'
+            WHEN COUNT(DISTINCT i.sku_id) > 1 THEN 'multiple'
+            ELSE ''
+        END
+    "SKUS",
+
+-- count the total of different SKUS and return the number
+    COUNT(DISTINCT i.sku_id) "COUNT OF SKUS",
+    SUM(i.qty_on_hand) "TOTAL QTY",
+    SUM(i.qty_allocated) "TOTAL ALLOCATED",
+        --max(l.COUNT_DSTAMP) "orig DSTAMP", -- not needed
+        -- Function to convert Timestamp to Excel's numeric datevalue
+    substr(MAX(l.count_dstamp) - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) + 2 "COUNTDATE Datevalue",
+    TO_CHAR(MAX(l.count_dstamp),'DD/MM/YYYY') "COUNTDATE String",
+    MAX(i.client_id) "CLIENT ID",
+    MAX(l.zone_1) "LOCATION ZONE",
+    MAX(l.subzone_1) "SUBZONE 1",
+    MAX(l.subzone_2) "SUBZONE 2"
+FROM
+    v_inventory i
+    RIGHT JOIN v_location l ON i.location_id = l.location_id
+-- INPUT FIELD FOR LOCATION_ID
+-- use wildcard operator %
+-- Example 1C08%AA or BU0%
+WHERE
+    l.location_id LIKE upper(:location_or_range_of_location)
+    --and l.LOCK_STATUS != 'Locked'
+    AND   l.zone_1 != 'UNUSED'
+GROUP BY
+    l.location_id
+ORDER BY
+    l.location_id;]]>
+         </code>
+      </snippet>
+      <snippet name="StockChecks per CLIENT (variable DATERANGE)" description="">
+         <code>
+            <![CDATA[--           StockChecks per CLIENT (variable DATERANGE)                 --
+-- --------------------------------------------------------------------- -- 
+select
+t1.LOCATION,
+t1.TOLOCATION,
+t1.FINALLOCATION,
+--t1.RDT_USER_MODE,
+--count(t1.KEY),
+--max(t1.CLIENT),
+sum(t1.ORIGINAL_QTY),
+sum(t1.UPDATE_QTY),
+CASE
+    WHEN max(t1.RDT_USER_MODE) IS NULL THEN sum(t1.UPDATE_QTY)
+    ELSE NULL
+END WEBUPDATE,
+
+CASE
+    WHEN max(t1.RDT_USER_MODE) IS NULL AND sum(t1.UPDATE_QTY) != 0 THEN 1
+    WHEN sum(t1.UPDATE_QTY) != 0 THEN 1
+    ELSE 0
+END ISUPDATED,
+
+--max(t1.LISTID),
+--max(t2.LISTID),
+--max(t2.LISTCLIENT),
+max(t1.CTDATE),
+
+
+CASE
+    WHEN max(t1.CLIENT) IS NULL THEN max(t2.LISTCLIENT)
+    WHEN max(t1.CLIENT) = max(t2.LISTCLIENT) THEN max(t1.CLIENT)
+    ELSE max(t1.CLIENT)
+END FINALCLIENT,
+
+max(t1.USER_ID)
+
+FROM
+(select
+    it.FROM_LOC_ID LOCATION,
+    it.TO_LOC_ID TOLOCATION,
+    it.FINAL_LOC_ID FINALLOCATION,
+    it.RDT_USER_MODE,
+    it.USER_ID,
+    it.KEY KEY,
+    it.CLIENT_ID CLIENT,
+    it.ORIGINAL_QTY,
+    it.UPDATE_QTY UPDATE_QTY,
+    it.LIST_ID LISTID,
+    it.DSTAMP CTDATE
+
+from V_INVENTORY_TRANSACTION it
+
+where it.CODE = 'Stock Check'
+    and it.DSTAMP <= to_timestamp(:EndDate_as_DD_MM_YYYY, 'DD/MM/YYYY')+1
+    and it.DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+    
+    and it.LIST_ID > 0
+    
+    --and it.LOCATION != it.TOLOCATION
+    
+) t1
+
+LEFT JOIN
+(select
+    liste.LIST_ID LISTID,
+    
+    max(liste.CLIENT_ID) LISTCLIENT
+
+from V_INVENTORY_TRANSACTION liste
+
+where liste.CODE = 'Stock Check'
+    and liste.DSTAMP <= to_timestamp(:EndDate_as_DD_MM_YYYY, 'DD/MM/YYYY') +1
+    and liste.DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+    
+    and liste.LIST_ID > 0
+
+group by liste.LIST_ID
+    
+) t2
+
+--on t1.LIST_ID = t2.LIST_ID
+on t1.LISTID = t2.LISTID
+
+
+
+group by t1.LOCATION, t1.TOLOCATION, t1.FINALLOCATION --, t1.RDT_USER_MODE
+order by t1.LOCATION;]]>
+         </code>
+      </snippet>
+      <snippet name="StockChecks per CLIENT (variable DATERANGE) - summarized " description="">
+         <code>
+            <![CDATA[--       StockChecks per CLIENT (variable DATERANGE) - summarized        --
+-- --------------------------------------------------------------------- -- 
+select
+    beforegroup.FINALCLIENT "CLIENT",
+    count(beforegroup.LOCATION) "TOTAL LOCATIONS",
+    sum(beforegroup.ISUPDATED) "LOCATIONS WITH DIFFERENCE"
+    
+
+from
+(select
+t1.LOCATION,
+t1.TOLOCATION,
+t1.FINALLOCATION,
+--t1.RDT_USER_MODE,
+--count(t1.KEY),
+--max(t1.CLIENT),
+sum(t1.ORIGINAL_QTY),
+sum(t1.UPDATE_QTY),
+CASE
+    WHEN max(t1.RDT_USER_MODE) IS NULL THEN sum(t1.UPDATE_QTY)
+    ELSE NULL
+END WEBUPDATE,
+
+CASE
+    WHEN max(t1.RDT_USER_MODE) IS NULL AND sum(t1.UPDATE_QTY) != 0 THEN 1
+    WHEN sum(t1.UPDATE_QTY) != 0 THEN 1
+    ELSE 0
+END ISUPDATED,
+
+--max(t1.LISTID),
+--max(t2.LISTID),
+--max(t2.LISTCLIENT),
+max(t1.CTDATE),
+
+
+CASE
+    WHEN max(t1.CLIENT) IS NULL THEN max(t2.LISTCLIENT)
+    WHEN max(t1.CLIENT) = max(t2.LISTCLIENT) THEN max(t1.CLIENT)
+    ELSE max(t1.CLIENT)
+END FINALCLIENT,
+
+max(t1.USER_ID)
+
+FROM
+(select
+    it.FROM_LOC_ID LOCATION,
+    it.TO_LOC_ID TOLOCATION,
+    it.FINAL_LOC_ID FINALLOCATION,
+    it.RDT_USER_MODE,
+    it.USER_ID,
+    it.KEY KEY,
+    it.CLIENT_ID CLIENT,
+    it.ORIGINAL_QTY,
+    it.UPDATE_QTY UPDATE_QTY,
+    it.LIST_ID LISTID,
+    it.DSTAMP CTDATE
+
+from V_INVENTORY_TRANSACTION it
+
+where it.CODE = 'Stock Check'
+    and it.DSTAMP <= to_timestamp(:EndDate_as_DD_MM_YYYY, 'DD/MM/YYYY')+1
+    and it.DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+    
+    and it.LIST_ID > 0
+    
+    --and it.LOCATION != it.TOLOCATION
+    
+) t1
+
+LEFT JOIN
+(select
+    liste.LIST_ID LISTID,
+    
+    max(liste.CLIENT_ID) LISTCLIENT
+
+from V_INVENTORY_TRANSACTION liste
+
+where liste.CODE = 'Stock Check'
+    and liste.DSTAMP <= to_timestamp(:EndDate_as_DD_MM_YYYY, 'DD/MM/YYYY') +1
+    and liste.DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+    
+    and liste.LIST_ID > 0
+
+group by liste.LIST_ID
+    
+) t2
+
+--on t1.LIST_ID = t2.LIST_ID
+on t1.LISTID = t2.LISTID
+
+
+
+group by t1.LOCATION, t1.TOLOCATION, t1.FINALLOCATION --, t1.RDT_USER_MODE
+order by t1.LOCATION
+) beforegroup
+
+group by beforegroup.FINALCLIENT;]]>
+         </code>
+      </snippet>
+      <snippet name="FULL INVENTORY WITH SERIALS" description="">
+         <code>
+            <![CDATA[--       FULL INVENTORY WITH SERIALS                --
+--  BUGGY - all serials visible, even shipped ones  --
+-- ------------------------------------------------ --
+SELECT 
+   
+    jinv.LOCATION_ID "LOCATION",
+    jinv.TAG_ID "TAG",
+    jinv.SKU_ID "SKU",
+    jserial.SERIAL_NUMBER "SERIAL",
+    jserial.STATUS "SERIAL STATUS",
+    jinv.CONDITION_ID "CONDITION"
+    
+
+FROM
+(select
+    tinv.TAG_ID,
+    tinv.SKU_ID,
+    tinv.LOCATION_ID,
+    tinv.CONDITION_ID
+
+from V_INVENTORY tinv) jinv
+
+LEFT JOIN
+(select 
+    tserial.TAG_ID,
+    tserial.SERIAL_NUMBER,
+    tserial.SKU_ID,
+    tserial.STATUS
+    
+
+from V_SERIAL_NUMBER tserial
+where tserial.STATUS = 'I'
+
+
+) jserial
+
+on jinv.TAG_ID = jserial.TAG_ID
+
+order by jinv.LOCATION_ID;]]>
+         </code>
+      </snippet>
+      <snippet name="STOCK CHECKS - from / to" description="">
+         <code>
+            <![CDATA[--    STOCK CHECKS - from / to                      --
+-- ------------------------------------------------ --
+select
+    it.FROM_LOC_ID,
+    count(it.KEY),
+    max(it.CLIENT_ID),
+    sum(it.UPDATE_QTY)
+
+    
+
+from V_INVENTORY_TRANSACTION it
+
+where it.CODE = 'Stock Check'
+    and it.DSTAMP < to_timestamp(:EndDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+    and it.DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+    
+    and it.LIST_ID > 0
+    
+group by it.FROM_LOC_ID;]]>
+         </code>
+      </snippet>
+      <snippet name="" description="">
+         <code/>
+      </snippet>
+      <snippet name="CONVERT: timestamp to Excel-Datevalue" description="converts a SQL-Timestamp to an integer that represents the Excel-DateValue">
+         <code>
+            <![CDATA[to_number(substr(TIMESTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2)]]>
+         </code>
+      </snippet>
+      <snippet name="REPORT: Damage Report 001" description="">
+         <code>
+            <![CDATA[-- --------------------------------------------- --
+--   Report Damage                               --
+--   22/11/2019 by marcel.sohnchen@nl.dsv.com    --
+-- --------------------------------------------- --
+
+
+SELECT 
+    
+    
+    -- Old version, not recognized by excel as datevaleu :(
+    --case
+    --    when t1.dstamp  is null then to_char(t2."MOVEDATE", 'DD/MM/YYYY')
+    --    else to_char(t1.DSTAMP, 'DD/MM/YYYY')
+    --end "Date",
+
+    -- new version - converted to Excels DateValue
+    case
+        when t1.dstamp  is null then substr(t2."MOVEDATE" - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) + 2
+        else substr(t1.dstamp - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) + 2
+    end "Date",
+
+    case
+        when t1.TRANSTYPE  is null then t2.OWN_TYPE
+        when t1.TRANSTYPE  is not null then t1.TRANSTYPE
+        else 'UNKNOWN RECORD'
+    end "TYPE",
+
+
+    case
+        when t1.TAG_ID  is null then t2.tag_id
+        else t1.tag_id
+    end "TAG",
+
+    case
+        when t1.condition_id  is null then t2.condition_id
+        else t1.condition_id
+    end "Condition",
+    
+    case
+        when t1.CLIENT_ID is null then t2.client_id
+        else t1.CLIENT_ID
+    end "Client",
+
+    case
+        when t1.SKU_ID is null then t2.SKU_ID
+        else t1.SKU_ID
+    end "SKU",
+
+    case
+        when t1.original_qty is null then t2.QTY_ON_HAND
+        else t1.original_qty
+    end "QTY",
+
+    t1.code,
+    t1.from_loc_id  "Initial Location",
+    t1.to_loc_id  "Second Location",
+    case
+        when t1.location_id  is null then t2.location_id
+        else t1.location_id
+    end "Current Location",
+
+    --t1.LOCATION_ID "Current Location T1",
+    --t2.LOCATION_ID "Current Location T2",
+    case
+        when t1.action is null and (t2.location_id not like 'INB%' and t2.LOCATION_ID != 'DAMAGE') then 'DAMAGE STOCK ON LOCATION - TO BE CHECKED !!'
+        when t1.action is null and (t2.location_id not like 'INB%' and t2.LOCATION_ID = 'DAMAGE') then 'pallet in DAMAGE-Area - TO BE CHECKED !!'
+        when t1.action is null and t2.location_id  like 'INB%' and t2.CONDITION_ID = 'DM1' then 'received as TRANSPORT Damage (DM1) - NOT YET PUTAWAYED'
+        when t1.action is null and t2.location_id  like 'INB%' and t2.CONDITION_ID = 'DM2' then 'received as HANDLING Damage (DM2) - NOT YET PUTAWAYED'
+        
+        else t1.action
+    end "Action"
+    
+   
+   
+
+
+FROM
+(
+    Select
+        trans.dstamp,
+        trans.TAG_ID,
+        trans.condition_id,
+        trans.Code,
+        trans.from_loc_id,
+        trans.to_loc_id,
+        inv.location_id ,
+        trans.action,
+        trans.time "Time 1st move",
+        inv.time "Time 2nd move",
+        trans.user_id "User first move",
+        trans.SKU_ID,
+        trans.CLIENT_ID,
+        trans.original_qty,
+        trans."OWN_TYPE" "TRANSTYPE"
+
+     
+    from
+    (select
+        it.DSTAMP,
+        it.SKU_ID,
+        it.CLIENT_ID,
+        it.TAG_ID,
+        it.CONDITION_ID,
+        it.CODE,
+        it.FROM_LOC_ID,
+        it.TO_LOC_ID,
+        --it.FINAL_LOC_ID,
+        it.ORIGINAL_QTY,
+        --it.UPDATE_QTY,
+        to_char(it.DSTAMP, 'HH24:MM:SS') "TIME",
+        it.user_id,
+        'TRANSACTION RECORD' "OWN_TYPE",
+    
+        CASE
+            WHEN (it.CONDITION_ID IN ('DM1','DM2','RF1') and it.TO_LOC_ID != 'DAMAGE' and it.FROM_LOC_ID = 'DAMAGE' ) THEN 'MOVED BACK to stock'
+            WHEN (it.CONDITION_ID IN ('DM1','DM2','HO1','HO4','HO5','HO2') and it.TO_LOC_ID != 'DAMAGE' and it.FROM_LOC_ID = 'GGSINSPECT' ) THEN 'inspection Glory - not updated'
+            
+            WHEN (it.CONDITION_ID IN ('OK1') and it.TO_LOC_ID = 'DAMAGE' ) THEN 'MOVED to damage - NOT received as Damage'
+            WHEN (it.CONDITION_ID IN ('DM1') and it.TO_LOC_ID = 'DAMAGE' ) THEN concat('PUTAWAY to damage - ',concat('received as TRANSPORT damage (',to_char(it.CONDITION_ID)))            
+            WHEN (it.CONDITION_ID IN ('DM2') and it.TO_LOC_ID = 'DAMAGE' ) THEN concat('PUTAWAY to damage - ',concat('received as HANDLING damage (',to_char(it.CONDITION_ID)))
+            
+            
+            ELSE ''
+        END "ACTION"
+        
+    
+    from
+        V_INVENTORY_TRANSACTION it
+    
+    where
+            (
+            it.DSTAMP <= CURRENT_DATE + 1
+            and it.DSTAMP >= CURRENT_DATE - 1
+            and it.CODE IN ('Cond Update', 'Putaway', 'Relocate')
+            and it.condition_id IN ('DM1','DM2','RF1')
+            --and (it.FINAL_LOC_ID = 'DAMAGE' or it.FINAL_LOC_ID = 'PROBLEM') -- comment this line to see all movements.
+            and (it.FROM_LOC_ID != 'GGSINSPECT') -- dont show movement from GGSINSPECT
+            and (it.FINAL_LOC_ID != 'GGSINSPECT') -- dont show movement to GGSINSPECT
+            and (it.FROM_LOC_ID != 'NONCONFORM') -- dont show movement from NONCONFORM
+            and (it.FINAL_LOC_ID != 'NONCONFORM') -- dont show movement to NONCONFORM
+)
+        OR
+            (
+            it.DSTAMP <= CURRENT_DATE + 1
+            and it.DSTAMP >= CURRENT_DATE - 1
+            and it.TO_LOC_ID = 'DAMAGE'
+            and it.CODE not in ('Adjustment','UnPick') 
+            )
+            
+    
+    
+    order by it.TAG_ID, it.DSTAMP
+    ) trans
+    LEFT JOIN
+    (
+    select
+        iv.TAG_ID,
+        iv.LOCATION_ID,
+        iv.QTY_ON_HAND,
+        to_char(iv.MOVE_DSTAMP, 'HH24:MM:SS') "TIME",
+        'INVENTORY RECORD' "OWN_TYPE"
+        
+        
+    from V_INVENTORY iv	
+    ) inv
+    
+    on trans.TAG_ID = inv.TAG_ID and trans.original_qty = inv.QTY_ON_HAND
+        
+) t1
+FUll outer join
+(
+    select 
+        inv2.TAG_ID,
+        inv2.CONDITION_ID,
+        inv2.LOCATION_ID,
+        inv2.CLIENT_ID,
+        inv2.SKU_ID,
+        inv2.QTY_ON_HAND,
+        inv2.MOVE_DSTAMP "MOVEDATE",
+        'INVENTORY RECORD' "OWN_TYPE"
+        
+    from v_inventory inv2
+    where 
+        (
+            inv2.CONDITION_ID in ('DM1','DM2','RF1','HO5')
+            --and inv2.LOCATION_ID != 'DAMAGE'
+        )
+) t2
+
+on t1.tag_id = t2.tag_id
+
+order by "TYPE" DESC, "Date" desc,"Client", "TAG", "CODE", "Current Location"  
+
+;
+]]>
+         </code>
+      </snippet>
+      <snippet name="INVENTORY: pallets on wrong locations" description="checks which Tags are on locations with a wrong Subzone2">
+         <code>
+            <![CDATA[select
+    loc.location_id "Location",
+    inv.sku_id "SKU",
+    inv.Tag_id "TAG-ID",
+    inv.client_id "SKU Client ID",
+    loc.subzone_2 "Location Subzone 2"
+
+from
+    (
+    select i.sku_id, i.LOCATION_ID, i.CLIENT_ID, i.tag_id
+    from V_inventory i
+    ) inv
+left JOIN
+    (
+    select l.subzone_2, l.location_id
+    from V_location l
+    ) loc
+on inv.location_id = loc.location_id
+
+where inv.client_id != loc.subzone_2
+and loc.subzone_2 not like '1A%'
+and loc.subzone_2 not like '1B%'
+and loc.subzone_2 not like '1C%'
+and loc.subzone_2 not like '290%'
+
+
+and loc.subzone_2 not like 'ZIEGLER%'
+
+and not (inv.client_id = 'NLFXG' and loc.subzone_2 = 'NLXEROX')
+and not (inv.client_id = 'NLVIS' and loc.subzone_2 = 'NLXEROX')
+and not (inv.client_id = 'NLHP' and loc.subzone_2 = 'NLXEROX')
+and not (inv.client_id = 'NLFFI' and loc.subzone_2 = 'NLXEROX')
+and not (inv.client_id = 'NLVESTAS' and loc.subzone_2 = 'NLBJC')
+and not (inv.client_id = 'NLBJC' and loc.subzone_2 = 'NLVESTAS')
+
+
+order by inv.client_id, loc.subzone_2
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="INVENTORY: Historical Locations of SKU" description="shows all historical (3 months) of a SKU">
+         <code>
+            <![CDATA[select
+    it.SKU_ID,
+    it.FROM_LOC_ID "historical location"
+from V_INVENTORY_TRANSACTION it
+where it.SKU_Id = :INPUT_SKU
+and (it.from_loc_id like '1%' OR it.from_loc_id like 'BU%' OR it.from_loc_id in ('DAMAGE','PROBLEM'))
+UNION
+select
+    it2.SKU_ID,
+    it2.TO_LOC_ID
+from V_INVENTORY_TRANSACTION it2
+where it2.SKU_Id = :INPUT_SKU
+and (it2.TO_LOC_ID like '1%'  OR it2.to_loc_id like 'BU%' OR it2.to_loc_id in ('DAMAGE','PROBLEM'))
+order by 2]]>
+         </code>
+      </snippet>
+      <snippet name="ZEON: Batch updates (last 3 months) with receive-data" description="">
+         <code>
+            <![CDATA[select *
+
+from
+(
+select 
+FROM_LOC_ID, SKU_ID, TAG_ID, BATCH_ID, substr(DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) "DSTAMP", USER_ID, NOTES, USER_DEF_NOTE_1, EXTRA_NOTES
+from V_inventory_transaction
+
+where code = 'Batch Update'
+and CLIENT_ID = 'NLZEON'
+
+order by dstamp
+) it1
+left join
+(
+select user_id "Receiving User",substr(DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) "Receive Date",tag_id
+from V_inventory_transaction
+where code = 'Receipt'
+and client_id = 'NLZEON'
+union all
+select user_id "Receiving User",substr(DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) "Receive Date",tag_id
+from V_INVENTORY_TRANSACTION_ARC
+where code = 'Receipt'
+and client_id = 'NLZEON'
+
+) it2
+on it1.tag_id = it2.tag_id
+order by it1.dstamp]]>
+         </code>
+      </snippet>
+      <snippet name="STOCK-CHECKS: CycleCounts Summary 1.0 (variable period)" description="">
+         <code>
+            <![CDATA[/**
+This is still bugged.
+
+duplicates must be filtered out (WEB updates instead of RDT updates)
+
+**/
+
+
+select
+    t1.*
+    
+    /** commented out, because of pivoting issues in excel....
+    round(
+        case
+        when t1."MISSING" > 0 then t1."MISSING" / t1."TOTAL ORIGINAL"
+        else 0
+        end
+    ,3) "clc. %missing",
+
+    round(
+        case
+        when t1."SURPLUS" > 0 and t1."TOTAL ORIGINAL" > 0 then t1."SURPLUS" / t1."TOTAL ORIGINAL"
+        when t1."SURPLUS" > 0 and t1."TOTAL ORIGINAL" = 0 then 1
+        else 0
+        end
+    ,3) "clc. %surplus"
+
+    
+    
+    case
+        when t1."TOTAL ORIGINAL" = 0 AND t1."clc. COUNTED" > 0 then 1
+        when t1."TOTAL ORIGINAL" > 0 AND t1."clc. COUNTED" = 0 then 1
+        when t1."TOTAL ORIGINAL" = 0 AND t1."clc. COUNTED" = 0 then 0
+        else round(abs(1 - t1."clc. COUNTED" / t1."TOTAL ORIGINAL"),3)
+    end "clc. %deviation"
+    **/
+from
+(select
+    to_number(substr(sc."COUNT DATE" - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5))+2 "COUNT DATE DV",
+    --sc."COUNT DATE",
+    sc.from_loc_id "LOCATION",
+    sc.SKU_ID,
+    sc.TAG_ID,
+    loc.work_zone,
+    --sc."TIMES COUNTED",
+
+    case
+        when sc."CLIENT" IS NOT NULL then sc."CLIENT"
+        when loc.subzone_2 is not null then loc.subzone_2
+        else loc.zone_1
+    end "CLIENT",
+    
+    case
+        when sc."TOTAL ORIGINAL" is null then 0
+        else sc."TOTAL ORIGINAL"
+    end "TOTAL ORIGINAL",
+   
+    --sc."TOTAL UPDATE",
+    
+    case
+        when "TOTAL ORIGINAL" + sc."TOTAL UPDATE" is null then 0
+        else "TOTAL ORIGINAL" + sc."TOTAL UPDATE"
+    end "clc. COUNTED",
+    case
+        when sc."TOTAL UPDATE" < 0 then abs(sc."TOTAL UPDATE")
+        else 0
+    end "clc. MISSING",
+        case
+        when sc."TOTAL UPDATE" > 0 then abs(sc."TOTAL UPDATE")
+        else 0
+    end "clc. SURPLUS"
+
+from
+    (select
+        it.FROM_LOC_ID "FROM_LOC_ID",
+        it.SKU_ID,
+        it.TAG_ID,
+        count(it.KEY) "TIMES COUNTED",
+        max(it.CLIENT_ID) "CLIENT",
+        sum(it.UPDATE_QTY) "TOTAL UPDATE",
+        sum(it.ORIGINAL_QTY) "TOTAL ORIGINAL",
+        max(it.dstamp) "COUNT DATE"
+    
+        
+    
+    from
+    (
+        select *
+        from
+        (
+        select
+            it.*,
+            ROW_NUMBER() OVER (PARTITION BY it.FROM_LOC_ID , it.SKU_ID, it.tag_id ORDER BY it.dstamp desc ) rn -- filtering the newest updates (Web > RDT)
+            
+        from V_INVENTORY_TRANSACTION it
+            
+        where it.CODE = 'Stock Check'
+            and it.DSTAMP < to_timestamp(:EndDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+            and it.DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
+            and it.LIST_ID > 0
+            
+        
+        order by it.dstamp desc
+        ) t
+        where t.rn = 1 -- show only the first rows of the filtering WEB > RDT
+    ) it
+        
+    group by it.FROM_LOC_ID,it.SKU_ID,it.TAG_ID) sc
+left join
+(
+select
+    location_id,
+    subzone_2,
+    work_zone,
+    zone_1
+    
+from V_location
+) loc
+on sc.from_loc_id = loc.location_id) t1
+
+--order by t1.location
+--order by "clc. %deviation" desc
+order by "COUNT DATE DV"
+]]>
+         </code>
+      </snippet>
+      <snippet name="STOCK-CHECKS: Count deviations per USER" description="">
+         <code>
+            <![CDATA[select 
+    sc2.user_id,
+    sum(sc2."TOTAL") "Total Locations counted",
+    sum(sc2."OK") "Loc qty same as CW",
+    sum(sc2."afwijking") "Loc qty afwijking",
+    concat(round(sum(sc2."afwijking")/sum(sc2."TOTAL") * 100,2),'%') "% afwijking"
+    --sc2.client_id
+from
+(select 
+    sc.user_id,
+    count(sc.key) "TOTAL",
+    case
+        when sc.result = 'OK' then count(sc.key)
+        else 0
+    end "OK",
+    case
+        when sc.result = 'afwijking' then count(sc.key)
+        else 0
+    end "afwijking",
+    sc.result,
+    sc.client_id
+    
+
+from
+(select
+    it.key,
+    it.FROM_LOC_ID,
+    case
+        when it.ORIGINAL_QTY is null then 0
+        else it.original_qty
+    end "ORIGINAL QTY",
+    it.UPDATE_QTY,
+    case
+        when it.UPDATE_QTY <> 0 then 'afwijking'
+        else 'OK'
+    end "RESULT",
+    it.user_id,
+    it.sku_id,
+    it.client_id
+   
+    
+from V_INVENTORY_TRANSACTION it
+where it.code = 'Stock Check'
+and it.user_id in ('75MARI', '75GLRA', '75MAIT', '75PIBU')
+and it.LIST_ID > 1000) sc
+group by sc.user_id, sc.result, sc.client_id) sc2
+group by sc2.user_id --,sc2.client_id
+order by sc2.user_id--, sc2.client_id]]>
+         </code>
+      </snippet>
+      <snippet name="LOCATIONS: Status of 1B-Blocks" description="">
+         <code>
+            <![CDATA[/** -----------------------------------------------------------
+    --  Overview of Block-locations in B-hall                --
+    --                                                       --
+    -- 03/01/2020 by marcel.soehnchen@nl.dsv.com             --
+    -----------------------------------------------------------
+**/
+
+select
+    loc."Location",
+    case
+        when loc."Location" in ('1B001','1B003','1B007','1B009','1B100','1B103','1B104','1B101','1B111') then 'L'
+        when loc."Location" in ('1B002','1B008','1B105','1B106','1B107','1B108') then 'M'
+        when loc."Location" in ('1B004','1B005','1B011','1B102') then 'XL'
+        when loc."Location" in ('1B006','1B010','1B109','1B110') then 'S'
+        else 'other'
+    end "Size",
+    case
+        when inv."QTY" is null and inv."QTY allocated" is null then 'yes'
+        else ' '
+    end "Empty?",
+
+    case
+        when loc."Status" = 'UnLocked' then '   x'
+        else ' '
+    end "Unlocked",
+    case
+        when loc."Status" = 'InLocked' then '   x'
+        else ' '
+    end "Inlocked",
+        case
+        when loc."Status" = 'OutLocked' then '   x'
+        else ' '
+    end "Outlocked",
+    case
+        when loc."Status" = 'Locked' then '   x'
+        else ' '
+    end "Locked",
+
+    CASE
+     when inv."SKU 1" is null then null
+     when inv."SKU 1" = inv."SKU 2" then inv."SKU 1"
+     else inv."SKU 2" || '(' || inv."SKU 1" || ')'
+    end "SKU(s)",
+    
+    inv."Num of pallets" "PALLETS",
+    round(inv."QTY allocated" / round(inv."QTY"/inv."Num of pallets",0),0) " PALLETS allocated",
+    inv."QTY" "PIECES",
+    inv."QTY allocated" "PIECES allocated"
+
+from
+(
+    select
+        LOCATION_ID "Location",
+        --ZONE_1,
+        LOCK_STATUS "Status"
+        --VOLUME,
+        --CURRENT_VOLUME,
+        --ALLOC_VOLUME
+    from V_location loc
+    
+    where loc.LOCATION_ID like '1B%'
+    and loc.LOCATION_ID not like '1BLIJN%'
+    and loc.zone_1 <> 'UNUSED'
+) loc
+left join
+(
+    select
+        LOCATION_ID,
+        count(TAG_ID) "Num of pallets",
+        --max(CLIENT_ID), min(CLIENT_ID),
+        max(SKU_ID) "SKU 1",
+        min(SKU_ID) "SKU 2",
+        --max(CONFIG_ID),
+        --max(PALLET_CONFIG),
+        sum(QTY_ON_HAND) "QTY",
+        sum(QTY_ALLOCATED) "QTY allocated"
+    from V_inventory inv
+    
+    where inv.LOCATION_ID like '1B%'
+    and inv.LOCATION_ID not like '1BLIJN%'
+    
+    group by location_id
+) inv
+on loc."Location" = inv.location_id
+--order by "Size"
+order by loc."Location"]]>
+         </code>
+      </snippet>
+   </group>
+</snippets>
