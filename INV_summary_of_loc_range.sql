@@ -1,6 +1,9 @@
 /**
   -- --------------------------------------------------------------------- -- 
   --    INVENTORY SUMMARY PER LOC, incl empty locs and multiple SKUS       --
+  --         variable :location_or_range_of_location will be filled        --
+  --         during runtime. Use expression like  1D%  or 1F05%            --
+  --                                                                       --
   --            13/11/2019 by marcel.sohnchen@nl.dsv.com                   --
   -- --------------------------------------------------------------------- -- 
 **/
