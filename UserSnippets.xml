@@ -6,7 +6,7 @@
             <![CDATA[C:\Users\marcel.sohnchen\AppData\Roaming\SQL Developer\UserSnippets.xml]]>
          </code>
       </snippet>
-      <snippet name="Locations - amount of bulk and pick locations per client" description="">
+      <snippet name="LOCATIONS: amount of bulk and pick locations per client" description="quantity of Bulk and Pick locations per Client">
          <code>
             <![CDATA[--    LOCATIONS - quantity of Bulk and Pick locations per Client         --
 --            19/11/2019 by marcel.sohnchen@nl.dsv.com                   --
@@ -32,7 +32,7 @@ from
             loc.WORK_ZONE "LOCATION ZONE",
             count(loc.LOCATION_ID) "TOTAL LOCATIONS"
         from V_LOCATION loc
-        where loc.SUBZONE_2 in ('NLVESTAS', 'NLGLORY')
+        where loc.SUBZONE_2 in ('NLVESTAS', 'NLGLORY') --Set CLIENTS here
             and loc.LOCK_STATUS != 'Locked'
 
         group by
@@ -46,9 +46,15 @@ order by locs."CLIENT"
       </snippet>
       <snippet name="INVENTORY SUMMARY PER LOC, incl empty locs and multiple SKUS" description="">
          <code>
-            <![CDATA[--    INVENTORY SUMMARY PER LOC, incl empty locs and multiple SKUS       --
---            13/11/2019 by marcel.sohnchen@nl.dsv.com                   --
--- --------------------------------------------------------------------- -- 
+            <![CDATA[/**
+  -- --------------------------------------------------------------------- -- 
+  --    INVENTORY SUMMARY PER LOC, incl empty locs and multiple SKUS       --
+  --         variable :location_or_range_of_location will be filled        --
+  --         during runtime. Use expression like  1D%  or 1F05%            --
+  --                                                                       --
+  --            13/11/2019 by marcel.sohnchen@nl.dsv.com                   --
+  -- --------------------------------------------------------------------- -- 
+**/
 SELECT
     l.location_id "LOCATION",
     MAX(l.lock_status) "LOCK STATUS",
@@ -355,13 +361,13 @@ group by it.FROM_LOC_ID;]]>
             <![CDATA[to_number(substr(TIMESTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2)]]>
          </code>
       </snippet>
-      <snippet name="REPORT: Damage Report 001" description="">
+      <snippet name="REPORT: Damage Report 001" description="all movemnts (today and yesterday) to and from Damage, incl. Stock actually on DAMAGE">
          <code>
-            <![CDATA[-- --------------------------------------------- --
---   Report Damage                               --
---   22/11/2019 by marcel.sohnchen@nl.dsv.com    --
--- --------------------------------------------- --
-
+            <![CDATA[/*   Report Damage
+        all movemnts (today and yesterday) to and from Damage, incl. Stock actually on DAMAGE
+        
+        22/11/2019 by marcel.sohnchen@nl.dsv.com
+*/
 
 SELECT 
     
@@ -556,7 +562,12 @@ order by "TYPE" DESC, "Date" desc,"Client", "TAG", "CODE", "Current Location"
       </snippet>
       <snippet name="INVENTORY: pallets on wrong locations" description="checks which Tags are on locations with a wrong Subzone2">
          <code>
-            <![CDATA[select
+            <![CDATA[/*
+   Shows all pallets which are on "wrong" locations. Means like Vestas-Pallets on Xerox-Locations.
+        VMI-Pallets are filtered out.
+*/
+
+select
     loc.location_id "Location",
     inv.sku_id "SKU",
     inv.Tag_id "TAG-ID",
@@ -599,7 +610,16 @@ order by inv.client_id, loc.subzone_2
       </snippet>
       <snippet name="INVENTORY: Historical Locations of SKU" description="shows all historical (3 months) of a SKU">
          <code>
-            <![CDATA[select
+            <![CDATA[/*
+    Shows all historical locations of a SKU
+        variable :INPUT_SKU is filled
+        during runtime. Locations DAMAGE and PROBLEM
+        are filtered out.
+        
+        11/2019 marcel.sohnchen@nl.dsv.com        
+*/
+
+select
     it.SKU_ID,
     it.FROM_LOC_ID "historical location"
 from V_INVENTORY_TRANSACTION it
@@ -617,7 +637,11 @@ order by 2]]>
       </snippet>
       <snippet name="ZEON: Batch updates (last 3 months) with receive-data" description="">
          <code>
-            <![CDATA[select *
+            <![CDATA[/*
+    ZEON: batch updates of the last 3 months
+*/
+
+select *
 
 from
 (
@@ -650,10 +674,8 @@ order by it1.dstamp]]>
       <snippet name="STOCK-CHECKS: CycleCounts Summary 1.0 (variable period)" description="">
          <code>
             <![CDATA[/**
-This is still bugged.
-
-duplicates must be filtered out (WEB updates instead of RDT updates)
-
+    STOCK-CHECKS: Summery per client (varaiable period)
+        begin end end dates filled during runtime.
 **/
 
 
@@ -777,7 +799,13 @@ order by "COUNT DATE DV"
       </snippet>
       <snippet name="STOCK-CHECKS: Count deviations per USER" description="">
          <code>
-            <![CDATA[select 
+            <![CDATA[/*
+    Stock-Checks: Summary of count deviations per User
+        set Users in line 49
+        
+*/
+
+select 
     sc2.user_id,
     sum(sc2."TOTAL") "Total Locations counted",
     sum(sc2."OK") "Loc qty same as CW",
@@ -820,20 +848,22 @@ from
     
 from V_INVENTORY_TRANSACTION it
 where it.code = 'Stock Check'
-and it.user_id in ('75MARI', '75GLRA', '75MAIT', '75PIBU')
+and it.user_id in ('75MARI', '75GLRA', '75MAIT', '75PIBU')  -- SET Users here
 and it.LIST_ID > 1000) sc
 group by sc.user_id, sc.result, sc.client_id) sc2
 group by sc2.user_id --,sc2.client_id
 order by sc2.user_id--, sc2.client_id]]>
          </code>
       </snippet>
-      <snippet name="LOCATIONS: Status of 1B-Blocks" description="">
+      <snippet name="LOCATIONS: Status of 1B-Blocks" description="shows quantities and (multiple) partnummers on Blockstacks. Also categorizes them in different sizes. ">
          <code>
-            <![CDATA[/** -----------------------------------------------------------
-    --  Overview of Block-locations in B-hall                --
-    --                                                       --
-    -- 03/01/2020 by marcel.soehnchen@nl.dsv.com             --
-    -----------------------------------------------------------
+            <![CDATA[/** ---------------------------------------------------------------------
+    --  Overview of Block-locations in B-hall                          --
+		--    shows quantities and (multiple) partnummers on Blockstacks.  --
+		--    also categorizes them in different sizes.                    --
+    --                                                                 --
+    -- 03/01/2020 by marcel.soehnchen@nl.dsv.com                       --
+    ---------------------------------------------------------------------
 **/
 
 select
