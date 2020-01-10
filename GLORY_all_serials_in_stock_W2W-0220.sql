@@ -28,6 +28,10 @@ select * from (
         end "STATUS",
         strans.ORDER_ID,
         strans.PALLET_ID
+        --fullinv."REC DSTAMP",
+        --fullinv."REC EXCEL DATE",
+        --fullinv."DAYS IN STOCK"
+      
     
     from
     (
@@ -46,7 +50,11 @@ select * from (
                 when (fullinv."SERIAL" is not null) and (fullinv."QUANTITY" <> serialcount."Distinct Serials") then 'YES'
                 when fullinv."SERIAL" is null then 'NOT SERIALIZED'
                 else 'other'
-            end "DIFFERENCE QTY/SERIAL?"
+            end "DIFFERENCE QTY/SERIAL?",
+            
+            fullinv."REC DSTAMP",
+            fullinv."REC EXCEL DATE",
+            fullinv."DAYS IN STOCK"
         
         from
         (
@@ -58,7 +66,10 @@ select * from (
                 jinv.QTY_ON_HAND "QUANTITY",
                 jserial.SERIAL_NUMBER "SERIAL",
                 jserial.STATUS "SERIAL STATUS",
-                jinv.CONDITION_ID "CONDITION"
+                jinv.CONDITION_ID "CONDITION",
+                jinv."REC DSTAMP",
+                jinv."REC EXCEL DATE",
+                jinv."DAYS IN STOCK"
                 
             
             FROM
@@ -67,8 +78,27 @@ select * from (
                 tinv.SKU_ID,
                 tinv.QTY_ON_HAND,
                 tinv.LOCATION_ID,
-                tinv.CONDITION_ID
-            
+                tinv.CONDITION_ID,
+                
+                
+                /**  Cases below will filter out the pick-locations, because of tag-merging on that locations.
+                        Here we cant name the receive date for sure. Maybe there is a better way to filter those locations (Subzone, workzone...)
+                **/
+                case
+                    when REGEXP_LIKE(tinv.LOCATION_ID, '*AA|*BB|*CC|*DD|*EE|*FF|*GG|*HH|*II', 'i') then null
+                    else tinv.RECEIPT_DSTAMP
+                end  "REC DSTAMP",
+                
+                case
+                    when REGEXP_LIKE(tinv.LOCATION_ID, '*AA|*BB|*CC|*DD|*EE|*FF|*GG|*HH|*II', 'i') then null
+                    else to_number(substr(tinv.RECEIPT_DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2)
+                end "REC EXCEL DATE",
+                case
+                    when REGEXP_LIKE(tinv.LOCATION_ID, '*AA|*BB|*CC|*DD|*EE|*FF|*GG|*HH|*II', 'i') then null
+                    else (to_number(substr(CURRENT_TIMESTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2)-to_number(substr(tinv.RECEIPT_DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2))
+                end  "DAYS IN STOCK"
+                 
+           
             from V_INVENTORY tinv
             where tinv.CLIENT_ID = 'NLGLORY'
             and tinv.LOCATION_ID not in ('SUSPENSE') 
