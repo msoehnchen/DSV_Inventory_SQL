@@ -8,7 +8,8 @@ select
     inv.sku_id "SKU",
     inv.Tag_id "TAG-ID",
     inv.client_id "SKU Client ID",
-    loc.subzone_2 "Location Subzone 2"
+    loc.subzone_2 "Location Subzone 2",
+    '                              ' "Note"
 
 from
     (
@@ -26,6 +27,8 @@ where inv.client_id != loc.subzone_2
 and loc.subzone_2 not like '1A%'
 and loc.subzone_2 not like '1B%'
 and loc.subzone_2 not like '1C%'
+and loc.subzone_2 not like '1Q%'
+and loc.subzone_2 not like '1S%'
 and loc.subzone_2 not like '290%'
 
 
