@@ -38,8 +38,8 @@ and not (inv.client_id = 'NLFXG' and loc.subzone_2 = 'NLXEROX')
 and not (inv.client_id = 'NLVIS' and loc.subzone_2 = 'NLXEROX')
 and not (inv.client_id = 'NLHP' and loc.subzone_2 = 'NLXEROX')
 and not (inv.client_id = 'NLFFI' and loc.subzone_2 = 'NLXEROX')
-and not (inv.client_id = 'NLVESTAS' and loc.subzone_2 = 'NLBJC')
-and not (inv.client_id = 'NLBJC' and loc.subzone_2 = 'NLVESTAS')
+--and not (inv.client_id = 'NLVESTAS' and loc.subzone_2 = 'NLBJC')
+--and not (inv.client_id = 'NLBJC' and loc.subzone_2 = 'NLVESTAS')
 
 
 order by inv.client_id, loc.subzone_2
