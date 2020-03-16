@@ -1,5 +1,5 @@
 --    LOCATIONS - quantity of Bulk and Pick locations per Client         --
---            19/11/2019 by marcel.sohnchen@nl.dsv.com                   --
+--              06-03-2020 by marcel.holl@nl.dsv.com                     --
 -- --------------------------------------------------------------------- --
 select
     to_number(substr(SYSDATE - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2) "Serial Date",
