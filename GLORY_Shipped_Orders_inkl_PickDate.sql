@@ -5,6 +5,7 @@ select
     ord.CONDITION_ID "status HO3",
     max(TO_CHAR(pick.LAST_PICK, 'DD-MM-YYYY')) "Pick date",
     ord."Ship date",
+    ord."EXCEL Ship date",
     case
         when upper(max(ord.notes)) like 'WO%' then max(ord.notes)
         else null
@@ -18,6 +19,7 @@ from
         ord.UPDATE_QTY,
         ord.CONDITION_ID,
         TO_CHAR(ord.DSTAMP, 'DD-MM-YYYY') "Ship date",
+        to_number(substr(ord.DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2) "EXCEL Ship date",
         ord.pallet_id,
         ord.Notes
     
@@ -29,7 +31,8 @@ from
         where CLIENT_ID = 'NLGLORY'
         and code like 'Shipment'
         and FROM_LOC_ID <> 'CONF FIN'
-        and DSTAMP <= to_timestamp('31-12-2019', 'DD/MM/YYYY')
+        and DSTAMP >= to_timestamp('28-01-2020', 'DD/MM/YYYY')
+        and DSTAMP <= to_timestamp('08-02-2020', 'DD/MM/YYYY')
         UNION
         select 
            FROM_LOC_ID, SKU_ID, UPDATE_QTY, CONDITION_ID, DSTAMP, CONSIGNMENT, REFERENCE_ID, NOTES, CUSTOMER_ID, SHIPMENT_NUMBER, PALLET_ID
@@ -37,7 +40,8 @@ from
         where CLIENT_ID = 'NLGLORY'
         and code like 'Shipment'
         and FROM_LOC_ID <> 'CONF FIN'
-        and DSTAMP >= to_timestamp('01-01-2019', 'DD/MM/YYYY')    
+        and DSTAMP >= to_timestamp('28-01-2020', 'DD/MM/YYYY')
+        and DSTAMP <= to_timestamp('08-02-2020', 'DD/MM/YYYY')
     ) ord
 )ord
 left join
@@ -67,5 +71,5 @@ left join
 ) pick
 
 on ord.REFERENCE_ID = pick.REFERENCE_ID and ord.SKU_ID = pick.SKU_ID
-group by ord.REFERENCE_ID, ord.SKU_ID, ord.CONDITION_ID, ord."Ship date"
+group by ord.REFERENCE_ID, ord.SKU_ID, ord.CONDITION_ID, ord."Ship date", ord."EXCEL Ship date"
 order by ord."Ship date", ord.REFERENCE_ID
