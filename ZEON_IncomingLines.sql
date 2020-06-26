@@ -1,48 +1,78 @@
-select
-    pah.CLIENT_ID,
-    PAH.PRE_ADVICE_ID,
-    STATUS,
-    DUE_DSTAMP,
-    EXCEL_DATE,
-    LINE_ID,
-    PAL.SKU_ID,
-    pal.CONFIG_ID,
-    pal.QTY_DUE,
-    QTY_PERPALLET,
-    SUMPALLETS,
-    USER_DEF_TYPE_7,
-    case
-        when USER_DEF_TYPE_7 in ('CRATEK','IBCK') then MIN_QTYPERPALLET * SKU.EACH_WEIGHT + 70
-        else MIN_QTYPERPALLET * SKU.EACH_WEIGHT + 25
-    end PALLETWEIGHT,
-    MIN_QTYPERPALLET,
-    
-    ceil(pal.QTY_DUE / MIN_QTYPERPALLET) MAXSUMPALLETS
-from (
-    select CLIENT_ID, PRE_ADVICE_ID, STATUS, DUE_DSTAMP, to_number(substr(DUE_DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2) EXCEL_DATE
-    from V_PRE_ADVICE_HEADER pa 
-    where pa.client_id = 'NLZEON' and pa.status = 'Hold' and pa.DUE_DSTAMP >= to_timestamp(:BeginDate_as_DD_MM_YYYY, 'DD/MM/YYYY')
-) pah
-left join
-(
-    select PRE_ADVICE_ID, LINE_ID, HOST_PRE_ADVICE_ID, SKU_ID, CONFIG_ID, QTY_DUE,
-        LPAD(CONFIG_ID,INSTR(CONFIG_ID,'E1P')-1) QTY_PERPALLET,
-        ceil(QTY_DUE / LPAD(CONFIG_ID,INSTR(CONFIG_ID,'E1P')-1)) SUMPALLETS
-    
-    from V_PRE_ADVICE_LINE where client_id = 'NLZEON'
-) pal
-on pal.pre_advice_id = pah.PRE_ADVICE_ID
-left join
-(
-    select SKU_ID,EACH_WEIGHT, USER_DEF_TYPE_7 from V_SKU where CLIENT_ID = 'NLZEON'
-) sku
-on sku.SKU_ID = pal.SKU_ID
-left join
-(
-select SKU_ID, min(LPAD(CONFIG_ID,INSTR(CONFIG_ID,'E1P')-1)) MIN_QTYPERPALLET from V_SKU_SKU_CONFIG where client_id = 'NLZEON'
-group by SKU_ID
-) config
-on pal.SKU_ID = config.SKU_ID
-
-ORDER BY pah.due_dstamp
-
+SELECT
+    pah.client_id,
+    pah.pre_advice_id,
+    status,
+    due_dstamp,
+    excel_date,
+    line_id,
+    pal.sku_id,
+    sku.putaway_group,
+    pal.config_id,
+    pal.qty_due,
+    qty_perpallet,
+    sumpallets,
+    user_def_type_7,
+    CASE
+            WHEN user_def_type_7 IN (
+                'CRATEK',
+                'IBCK'
+            ) THEN min_qtyperpallet * sku.each_weight + 70
+            ELSE min_qtyperpallet * sku.each_weight + 25
+        END
+    palletweight,
+    min_qtyperpallet,
+    ceil(pal.qty_due / min_qtyperpallet) maxsumpallets
+FROM
+    (
+        SELECT
+            client_id,
+            pre_advice_id,
+            status,
+            due_dstamp,
+            to_number(substr(due_dstamp - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5) + 2) excel_date
+        FROM
+            v_pre_advice_header pa
+        WHERE
+            pa.client_id = 'NLZEON'
+            AND   pa.status = 'Hold'
+            AND   pa.due_dstamp >= to_timestamp(:begindate_as_dd_mm_yyyy,'DD/MM/YYYY')
+    ) pah
+    LEFT JOIN (
+        SELECT
+            pre_advice_id,
+            line_id,
+            host_pre_advice_id,
+            sku_id,
+            config_id,
+            qty_due,
+            lpad(config_id,instr(config_id,'E1P') - 1) qty_perpallet,
+            ceil(qty_due / lpad(config_id,instr(config_id,'E1P') - 1) ) sumpallets
+        FROM
+            v_pre_advice_line
+        WHERE
+            client_id = 'NLZEON'
+    ) pal ON pal.pre_advice_id = pah.pre_advice_id
+    LEFT JOIN (
+        SELECT
+            sku_id,
+            each_weight,
+            putaway_group,
+            user_def_type_7
+        FROM
+            v_sku
+        WHERE
+            client_id = 'NLZEON'
+    ) sku ON sku.sku_id = pal.sku_id
+    LEFT JOIN (
+        SELECT
+            sku_id,
+            MIN(lpad(config_id,instr(config_id,'E1P') - 1) ) min_qtyperpallet
+        FROM
+            v_sku_sku_config
+        WHERE
+            client_id = 'NLZEON'
+        GROUP BY
+            sku_id
+    ) config ON pal.sku_id = config.sku_id
+ORDER BY
+    pah.due_dstamp
