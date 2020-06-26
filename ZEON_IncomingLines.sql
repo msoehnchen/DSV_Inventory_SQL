@@ -11,7 +11,12 @@ select
     QTY_PERPALLET,
     SUMPALLETS,
     USER_DEF_TYPE_7,
+    case
+        when USER_DEF_TYPE_7 in ('CRATEK','IBCK') then MIN_QTYPERPALLET * SKU.EACH_WEIGHT + 70
+        else MIN_QTYPERPALLET * SKU.EACH_WEIGHT + 25
+    end PALLETWEIGHT,
     MIN_QTYPERPALLET,
+    
     ceil(pal.QTY_DUE / MIN_QTYPERPALLET) MAXSUMPALLETS
 from (
     select CLIENT_ID, PRE_ADVICE_ID, STATUS, DUE_DSTAMP, to_number(substr(DUE_DSTAMP - to_timestamp('01/01/1900','DD/MM/YYYY'),6,5)+2) EXCEL_DATE
@@ -29,7 +34,7 @@ left join
 on pal.pre_advice_id = pah.PRE_ADVICE_ID
 left join
 (
-    select SKU_ID, USER_DEF_TYPE_7 from V_SKU where CLIENT_ID = 'NLZEON'
+    select SKU_ID,EACH_WEIGHT, USER_DEF_TYPE_7 from V_SKU where CLIENT_ID = 'NLZEON'
 ) sku
 on sku.SKU_ID = pal.SKU_ID
 left join
