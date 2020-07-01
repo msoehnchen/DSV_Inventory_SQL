@@ -6,7 +6,6 @@ SELECT
     excel_date,
     line_id,
     pal.sku_id,
-    pal.batch_id,
     sku.putaway_group,
     pal.config_id,
     pal.qty_due,
@@ -34,9 +33,11 @@ FROM
         FROM
             v_pre_advice_header pa
         WHERE
-            pa.client_id = 'NLZEON'
-            AND   pa.status = 'Hold'
+            pa.client_id = 'NLVESTAS'
+            AND   pa.status in ('Hold','In Progress','Released')
             AND   pa.due_dstamp >= to_timestamp(:begindate_as_dd_mm_yyyy,'DD/MM/YYYY')
+           -- AND   pa.due_dstamp <= to_timestamp(:begindate_as_dd_mm_yyyy,'DD/MM/YYYY') + :NextXDays
+                        
     ) pah
     LEFT JOIN (
         SELECT
@@ -44,7 +45,6 @@ FROM
             line_id,
             host_pre_advice_id,
             sku_id,
-            batch_id,
             config_id,
             qty_due,
             lpad(config_id,instr(config_id,'E1P') - 1) qty_perpallet,
@@ -52,7 +52,7 @@ FROM
         FROM
             v_pre_advice_line
         WHERE
-            client_id = 'NLZEON'
+            client_id = 'NLVESTAS'
     ) pal ON pal.pre_advice_id = pah.pre_advice_id
     LEFT JOIN (
         SELECT
@@ -63,7 +63,7 @@ FROM
         FROM
             v_sku
         WHERE
-            client_id = 'NLZEON'
+            client_id = 'NLVESTAS'
     ) sku ON sku.sku_id = pal.sku_id
     LEFT JOIN (
         SELECT
@@ -72,7 +72,7 @@ FROM
         FROM
             v_sku_sku_config
         WHERE
-            client_id = 'NLZEON'
+            client_id = 'NLVESTAS'
         GROUP BY
             sku_id
     ) config ON pal.sku_id = config.sku_id
