@@ -4,6 +4,7 @@ select
     inv.DESCRIPTION,
     inv.CONFIG_ID,
     inv.PALLET_CONFIG,
+    sku.EACH_WIDTH, SKU.EACH_DEPTH, SKU.EACH_HEIGHT,
     sku.putaway_group,
     inv.QTY_OF_TAGS
 FROM
@@ -19,7 +20,7 @@ FROM
 left join
 (
 select
-    CLIENT_ID, SKU_ID, PUTAWAY_GROUP
+    CLIENT_ID, SKU_ID, PUTAWAY_GROUP, V_SKU.EACH_WIDTH, V_SKU.EACH_DEPTH, V_SKU.EACH_HEIGHT
 from V_SKU
 ) sku
 on inv.CLIENT_ID = sku.CLIENT_ID and inv.SKU_ID = sku.SKU_ID
