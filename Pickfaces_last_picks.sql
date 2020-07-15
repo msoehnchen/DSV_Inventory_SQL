@@ -1,4 +1,4 @@
-select pf.CLIENT_ID, pf.SKU_ID, pf.LOCATION_ID, 
+select pf.CLIENT_ID, pf.SKU_ID, pf.LOCATION_ID, pf.QTY_DUE,
     case
         when it."LAST PICK" is null then '> 3 months'
         else TO_CHAR(it."LAST PICK", 'DD-MM-YYYY')
@@ -11,7 +11,7 @@ select pf.CLIENT_ID, pf.SKU_ID, pf.LOCATION_ID,
 
     inv.QTY_ON_HAND
 from(
-    select CLIENT_ID, SKU_ID, LOCATION_ID from V_PICK_FACE
+    select CLIENT_ID, SKU_ID, LOCATION_ID, QTY_DUE from V_PICK_FACE
 ) pf
 left join
 (
@@ -24,7 +24,7 @@ left join
     select i.QTY_ON_HAND, i.LOCATION_ID from V_Inventory i
 ) inv
 on pf.LOCATION_ID = inv.LOCATION_ID
-order by pf.location_id
+--order by pf.location_id
 
 
 

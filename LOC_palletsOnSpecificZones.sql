@@ -1,13 +1,28 @@
-select * from
+select 
+    loc.LOCATION_ID,
+    loc.ZONE_1,
+    loc.SUBZONE_1,
+    loc.SUBZONE_2,
+    loc.CURRENT_VOLUME,
+    loc.HEIGHT,
+    loc.DEPTH,
+    loc.WIDTH,
+    loc.WEIGHT,
+    inv.TAG_ID,
+    inv.SKU_ID,
+    inv.PALLET_CONFIG,
+    inv.QTY_ON_HAND,
+    inv.QTY_ALLOCATED
+from
 (
     select LOCATION_ID, ZONE_1, SUBZONE_1, SUBZONE_2, CURRENT_VOLUME, HEIGHT, DEPTH, WIDTH, WEIGHT 
     from V_location
-    where SUBZONE_2 = :SUBZONE2
-    and SUBZONE_1 = :SUBZONE1
+    where SUBZONE_2 LIKE :SUBZONE2
+    and SUBZONE_1 LIKE :SUBZONE1
 ) loc
 LEFT JOIN
 (
     select TAG_ID, CLIENT_ID, SKU_ID, PALLET_CONFIG, LOCATION_ID, QTY_ON_HAND, QTY_ALLOCATED, CONDITION_ID from V_INVENTORY
 ) inv
 on loc.LOCATION_ID = inv.LOCATION_ID
-order by inv.PALLET_CONFIGd
+order by inv.PALLET_CONFIG
