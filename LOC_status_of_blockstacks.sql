@@ -60,9 +60,7 @@ from
         --ALLOC_VOLUME
     from V_location loc
     
-    where loc.LOCATION_ID like '1B%'
-    and loc.LOCATION_ID not like '1BLIJN%'
-    and loc.zone_1 <> 'UNUSED'
+    where (REGEXP_LIKE(loc.location_id,'^1(A|B|C|F)') and length(loc.location_id) between 5 and 7)
 ) loc
 left join
 (
@@ -78,8 +76,8 @@ left join
         sum(QTY_ALLOCATED) "QTY allocated"
     from V_inventory inv
     
-    where inv.LOCATION_ID like '1B%'
-    and inv.LOCATION_ID not like '1BLIJN%'
+    where (REGEXP_LIKE(inv.location_id,'^1(A|B|C|F)') and length(inv.location_id) between 5 and 7)
+
     
     group by location_id
 ) inv
