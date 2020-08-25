@@ -27,7 +27,11 @@ where inv.client_id != loc.subzone_2
 and loc.subzone_2 not like '1A%'
 and loc.subzone_2 not like '1B%'
 and loc.subzone_2 not like '1C%'
+and loc.subzone_2 not like '1D%'
+and loc.subzone_2 not like '1E%'
+and loc.subzone_2 not like '1F%'
 and loc.subzone_2 not like '1Q%'
+and loc.subzone_2 not like '1R%'
 and loc.subzone_2 not like '1S%'
 and loc.subzone_2 not like '290%'
 
