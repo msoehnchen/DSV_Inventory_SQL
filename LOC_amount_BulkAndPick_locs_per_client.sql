@@ -33,7 +33,7 @@ from
         loc.WORK_ZONE "LOCATION ZONE",
         count(loc.LOCATION_ID) "TOTAL LOCATIONS"
     from V_LOCATION loc
-    where loc.SUBZONE_2 in ('NLVESTAS', 'NLGLORY','NLNEDAP') --Set CLIENTS here
+    where loc.SUBZONE_2 in ('NLVESTAS', 'NLGLORY','NLNEDAP','NLXEROX') --Set CLIENTS here
         and loc.LOCK_STATUS != 'Locked'
     group by loc.SUBZONE_2, loc.WORK_ZONE
 UNION ALL
@@ -53,7 +53,7 @@ UNION ALL
     group by loc.SUBZONE_2, loc.WORK_ZONE
 ) combined
 
-where combined."CLIENT" in ('NLVESTAS','NLGLORY','NLNEDAP')
+where combined."CLIENT" in ('NLVESTAS','NLGLORY','NLNEDAP','NLXEROX')
 
 group by combined."CLIENT", combined."LOCATION ZONE"
 

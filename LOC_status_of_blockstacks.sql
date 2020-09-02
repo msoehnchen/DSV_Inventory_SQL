@@ -1,7 +1,7 @@
 /** ---------------------------------------------------------------------
-    --  Overview of Block-locations in B-hall                          --
-		--    shows quantities and (multiple) partnummers on Blockstacks.  --
-		--    Also categorizes them in different sizes.                    --
+    --  Overview of Block-Stacks                                       --
+    --    shows quantities and (multiple) partnummers on Blockstacks.  --
+	--    Also categorizes them in different sizes.                    --
     --                                                                 --
     -- 03/01/2020 by marcel.soehnchen@nl.dsv.com                       --
     ---------------------------------------------------------------------
@@ -17,7 +17,7 @@ select
         else 'other'
     end "Size",
     case
-        when inv."QTY" is null and inv."QTY allocated" is null then 'yes'
+        when inv."QTY" is null and inv."QTY allocated" is null then '   yes'
         else ' '
     end "Empty?",
 
@@ -39,15 +39,35 @@ select
     end "Locked",
 
     CASE
-     when inv."SKU 1" is null then null
+     when inv."SKU 1" is null then ' '
      when inv."SKU 1" = inv."SKU 2" then inv."SKU 1"
      else inv."SKU 2" || '(' || inv."SKU 1" || ')'
     end "SKU(s)",
     
-    inv."Num of pallets" "PALLETS",
-    round(inv."QTY allocated" / round(inv."QTY"/inv."Num of pallets",0),0) " PALLETS allocated",
-    inv."QTY" "PIECES",
-    inv."QTY allocated" "PIECES allocated"
+    CASE
+        when inv."DESCRIPTION" is null then ' '
+        else inv."DESCRIPTION"
+    end "DESCRIPTION",
+    
+    case
+        when inv."Num of pallets" is null then ' '
+        else to_char(inv."Num of pallets")
+    end "PALLETS",
+    
+    case
+        when round(inv."QTY allocated" / round(inv."QTY"/inv."Num of pallets",0),0) is null then ' '
+        else to_char(round(inv."QTY allocated" / round(inv."QTY"/inv."Num of pallets",0),0))
+    end "PALLETS allocated",
+    
+    case
+        when inv."QTY" is null then ' '
+        else to_char(inv."QTY")
+    end "PIECES",
+    
+    case
+        when inv."QTY allocated" is null then ' '
+        else to_char(inv."QTY allocated")
+    end "PIECES allocated"
 
 from
 (
@@ -61,6 +81,7 @@ from
     from V_location loc
     
     where (REGEXP_LIKE(loc.location_id,'^1(A|B|C|F)') and length(loc.location_id) between 5 and 7)
+    or (REGEXP_LIKE(loc.location_id,'^BU') and length(loc.location_id) between 5 and 6)
 ) loc
 left join
 (
@@ -70,6 +91,7 @@ left join
         --max(CLIENT_ID), min(CLIENT_ID),
         max(SKU_ID) "SKU 1",
         min(SKU_ID) "SKU 2",
+        max(DESCRIPTION) "DESCRIPTION",
         --max(CONFIG_ID),
         --max(PALLET_CONFIG),
         sum(QTY_ON_HAND) "QTY",
@@ -77,6 +99,7 @@ left join
     from V_inventory inv
     
     where (REGEXP_LIKE(inv.location_id,'^1(A|B|C|F)') and length(inv.location_id) between 5 and 7)
+    or (REGEXP_LIKE(inv.location_id,'^BU') and length(inv.location_id) between 5 and 6)
 
     
     group by location_id
