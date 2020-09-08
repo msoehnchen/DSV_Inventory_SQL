@@ -8,7 +8,7 @@
 **/
 
 select
-    loc."Location",
+    concat('''', loc."Location") Location,
     case
         when loc."Location" in ('1B001','1B003','1B007','1B009','1B100','1B103','1B104','1B101','1B111') then 'L'
         when loc."Location" in ('1B002','1B008','1B105','1B106','1B107','1B108') then 'M'
@@ -80,7 +80,7 @@ from
         --ALLOC_VOLUME
     from V_location loc
     
-    where (REGEXP_LIKE(loc.location_id,'^1(A|B|C|F)') and length(loc.location_id) between 5 and 7)
+    where (REGEXP_LIKE(loc.location_id,'^1(A|B|C|D|E|F)') and length(loc.location_id) between 5 and 7)
     or (REGEXP_LIKE(loc.location_id,'^BU') and length(loc.location_id) between 5 and 6)
 ) loc
 left join
@@ -98,7 +98,7 @@ left join
         sum(QTY_ALLOCATED) "QTY allocated"
     from V_inventory inv
     
-    where (REGEXP_LIKE(inv.location_id,'^1(A|B|C|F)') and length(inv.location_id) between 5 and 7)
+    where (REGEXP_LIKE(inv.location_id,'^1(A|B|C|D|E|F)') and length(inv.location_id) between 5 and 7)
     or (REGEXP_LIKE(inv.location_id,'^BU') and length(inv.location_id) between 5 and 6)
 
     
