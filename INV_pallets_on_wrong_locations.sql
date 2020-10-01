@@ -5,6 +5,7 @@
 
 select
     loc.location_id "Location",
+    loc.lock_status "Status",
     inv.sku_id "SKU",
     inv.Tag_id "TAG-ID",
     inv.client_id "SKU Client ID",
@@ -18,7 +19,7 @@ from
     ) inv
 left JOIN
     (
-    select l.subzone_2, l.location_id
+    select l.subzone_2, l.location_id, l.lock_status
     from V_location l
     ) loc
 on inv.location_id = loc.location_id

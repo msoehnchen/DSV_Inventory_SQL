@@ -50,11 +50,11 @@ select * from (
                 when (fullinv."SERIAL" is not null) and (fullinv."QUANTITY" <> serialcount."Distinct Serials") then 'YES'
                 when fullinv."SERIAL" is null then 'NOT SERIALIZED'
                 else 'other'
-            end "DIFFERENCE QTY/SERIAL?",
+            end "DIFFERENCE QTY/SERIAL?"
             
-            fullinv."REC DSTAMP",
-            fullinv."REC EXCEL DATE",
-            fullinv."DAYS IN STOCK"
+            --fullinv."REC DSTAMP",
+            --fullinv."REC EXCEL DATE",
+            --fullinv."DAYS IN STOCK"
         
         from
         (
