@@ -4,7 +4,8 @@ select
             i2.SKU_ID,
             count(i2.TAG_ID) TAGS,
             --i2.CLIENT_ID,
-            sum(i2.QTY_ON_HAND) QTY
+            sum(i2.QTY_ON_HAND) QTY,
+            sum(i2.QTY_ALLOCATED) ALLOC
 
 from
 (
@@ -16,9 +17,12 @@ from
             end LOCATION,
             i.SKU_ID,
             i.CLIENT_ID,
-            i.QTY_ON_HAND
+            i.QTY_ON_HAND,
+            i.QTY_ALLOCATED
     from V_INVENTORY i
-    where SKU_ID in('100S14276','C8001V/F')
+  
+    where SKU_ID in('100S14107')
+    
     and i.location_id not like ('LANE%')
     and i.location_id not like ('5%')
 ) i2    

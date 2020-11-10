@@ -13,4 +13,4 @@ where it.SKU_Id = :INPUT_SKU
 and (it.from_loc_id like '1%' OR it.from_loc_id like 'BU%' OR it.from_loc_id in ('DAMAGE','PROBLEM'))
 and it.DSTAMP > sysdate - 60
 group by it.SKU_ID, it.FROM_LOC_ID
-order by it.loc_id
+order by it.from_loc_id
