@@ -18,6 +18,7 @@ select -- FROM q2: here we sum the locations, and check if there are enough loca
     sum(q2.FREE_GROUNDLOCATIONS) GROUNDLOCS,
     sum(q2.FREE_HIGHLOCATIONS) HIGHLOCS,
     case
+        when regexp_like(q2.pallet_config,'^CRTN') then 'SHELF'
         when sum(q2.FREE_GROUNDLOCATIONS) + sum(q2.FREE_HIGHLOCATIONS) >= q2.QTY_OF_TAGS then 'OK'
         else 'NOT OK !!'
     end ENOUGH_LOCS
@@ -70,8 +71,8 @@ from
             select -- getting all items from INBOUND lanes
                 CLIENT_ID, SKU_ID, DESCRIPTION, CONFIG_ID, PALLET_CONFIG,count(TAG_ID) QTY_OF_TAGS
             from V_INVENTORY
-            where location_id like 'INB%'
-            and not location_id like 'INB-BU%'
+            where (location_id like 'INB%' or location_id like 'NOTOLOC%')
+            and not location_id like 'INB-DCC%'
             group by CLIENT_ID, SKU_ID, DESCRIPTION, CONFIG_ID, PALLET_CONFIG
             order by CLIENT_ID, PALLET_CONFIG
         ) inv
@@ -157,4 +158,4 @@ group by
     q2.putaway_group,
     q2.QTY_OF_TAGS
     
-order by q2.client_id, q2.qty_of_tags
+order by ENOUGH_LOCS, Q2.CLIENT_ID, Q2.QTY_OF_TAGS

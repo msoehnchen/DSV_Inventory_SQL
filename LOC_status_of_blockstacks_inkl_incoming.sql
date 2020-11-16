@@ -14,7 +14,10 @@ select
     BSTACKS.PIECES, 
     BSTACKS."PIECES allocated",
     INCOMING.SUM_OF_TAGS "PLT INCOMING SKU1",
-    INCOMING2.SUM_OF_TAGS "PLT INCOMING SKU2"
+    INCOMING2.SUM_OF_TAGS "PLT INCOMING SKU2",
+    NVL(INCOMING.SUM_OF_TAGS,0) + NVL(INCOMING2.SUM_OF_TAGS,0) "TOTAL PLTS INCOMING",
+    BSTACKS."LOC_STATUS"
+    
 from
 (
     select
@@ -82,7 +85,9 @@ from
         case
             when INV."QTY allocated" is null then ' '
             else TO_CHAR(INV."QTY allocated")
-        end "PIECES allocated"
+        end "PIECES allocated",
+        
+        LOC."Status" "LOC_STATUS"
     
     from
     (
