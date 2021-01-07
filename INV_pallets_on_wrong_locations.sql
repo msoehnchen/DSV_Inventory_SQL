@@ -9,7 +9,11 @@ select
     inv.sku_id "SKU",
     inv.Tag_id "TAG-ID",
     inv.client_id "SKU Client ID",
-    loc.subzone_2 "Location Subzone 2",
+    LOC.SUBZONE_2 "Location Subzone 2",
+    LOC.SUBZONE_1 "Location Subzone 1",
+    LOC.zone_1 "Location Zone",
+    LOC.WORK_ZONE "Work Zone",
+    
     '                              ' "Note"
 
 from
@@ -19,14 +23,16 @@ from
     ) inv
 left JOIN
     (
-    select l.subzone_2, l.location_id, l.lock_status
+    select l.subzone_2, l.subzone_1, l.zone_1, l.work_zone, l.location_id, l.lock_status
     from V_location l
     ) loc
 on inv.location_id = loc.location_id
 
 where inv.client_id != loc.subzone_2
 and loc.subzone_2 not like '1A%'
-and loc.subzone_2 not like '1B%'
+and LOC.SUBZONE_2 not like '1B%'
+and LOC.SUBZONE_2 not like '2B%'
+
 and loc.subzone_2 not like '1C%'
 and loc.subzone_2 not like '1D%'
 and loc.subzone_2 not like '1E%'
@@ -43,8 +49,10 @@ and not (inv.client_id = 'NLFXG' and loc.subzone_2 = 'NLXEROX')
 and not (inv.client_id = 'NLVIS' and loc.subzone_2 = 'NLXEROX')
 and not (inv.client_id = 'NLHP' and loc.subzone_2 = 'NLXEROX')
 and not (inv.client_id = 'NLFFI' and loc.subzone_2 = 'NLXEROX')
---and not (inv.client_id = 'NLVESTAS' and loc.subzone_2 = 'NLBJC')
---and not (inv.client_id = 'NLBJC' and loc.subzone_2 = 'NLVESTAS')
+and not (inv.client_id = 'NLVESTAS' and loc.subzone_2 = 'NLBJC')
+and not (inv.client_id = 'NLBJC' and loc.subzone_2 = 'NLVESTAS')
+
+and not (INV.CLIENT_ID = 'NLETS')
 
 
 order by inv.client_id, loc.subzone_2

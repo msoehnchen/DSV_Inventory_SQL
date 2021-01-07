@@ -33,4 +33,5 @@ LEFT JOIN
 ) sku
 on inv.SKU_ID = sku.SKU_ID
 
-order by inv.PALLET_CONFIG
+order by loc.location_id, loc.current_weight, calc_eaches_weight
+--order by inv.PALLET_CONFIG
