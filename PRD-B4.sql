@@ -1,13 +1,7 @@
-SELECT
-    location_id,
-    sku_id,
-    tag_id,
-    qty_on_hand,
-    TO_CHAR(receipt_dstamp,'YYYY/MM/DD') rec_date
-FROM
-    v_inventory
-WHERE
-    sku_id IN (
-        '100S14375',
-        '100S14377'
-    )
+select
+LOCATION_ID,
+SKU_ID,
+QTY_ON_HAND,
+'<html><strong>'||TAG_ID||'</strong>' TAG
+from V_INVENTORY where SKU_ID in ('2112','1435','2343') and regexp_like(LOCATION_ID,'^1\w\d\d\d\d\d\w')
+order by location_id
